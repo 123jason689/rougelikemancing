@@ -1,9 +1,10 @@
 #include <curses.h>
 #include <stdbool.h>
 #include <windows.h>
+#include <string.h>
 
-const int optrow = 90;
-const int optcol = 340;
+const int optrow = 96;
+const int optcol = 355;
 
 void mvprtch(int row, int col, int color, char c){
 	attron(COLOR_PAIR(color));
@@ -17,17 +18,28 @@ void mvprtstr(int row, int col, int color, const char *c){
 	attroff(COLOR_PAIR(color));
 }
 
+int findcenterpos(const char *s){
+	int x;
+	for(x = 0; s[x] != '\0'; x++);
+	return x;
+}
+
 void forcefullscreen(int *irow, int *icol){
+	int midx = (*icol)/2 , midy = (*irow)/2;
+	
 	while(*irow < optrow || *icol < optcol){
 		clear();
-		mvprtstr(15, 40, 2, "Please full screen this window !!");
-		mvprtstr(16, 40, 2, "or press ctrl + scroll to adjust the minimum size");
-		char buf[20];
-		sprintf(buf, "Row: %d, Col: %d", *irow, *icol);
-		mvprtstr(17, 40, 1, buf);		
+		char str[50] = "Please full screen this window !!";
+		mvprtstr(midy-1, midx-findcenterpos(str)/2, 2, str);
+		strcpy(str, "and then press ctrl and \"+\" to adjust the minimum size.");
+		mvprtstr(midy, midx-findcenterpos(str)/2, 2, str);
+		sprintf(str, "Row: %d, Col: %d", *irow, *icol);
+		mvprtstr(midy+1, midx-findcenterpos(str)/2, 1, str);		
 		refresh();
 	//	napms(500); // napms is delay function that takes in arguments in millisecond
 		getmaxyx(stdscr, *irow, *icol);
+		midx = (*icol)/2;
+		midy = (*irow)/2;
 		resize_term(0, 0);
 	}
 	resize_term(0, 0);
