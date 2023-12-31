@@ -5,6 +5,7 @@
 
 const int optrow = 96;
 const int optcol = 355;
+int bkgcolor = 2;
 
 void mvprtch(int row, int col, int color, char c){
 	attron(COLOR_PAIR(color));
@@ -49,26 +50,103 @@ void forcefullscreen(int *irow, int *icol){
 	refresh();
 }
 
-void strgame(int irow, int icol){
-//	refresh();
-	for(int i =0; i < irow; i++){
-		for(int j = 0; j< icol; j++){
-			if(i == 0 || i == irow-1){
-				mvprtch(i,j, 1, '#');
-			} else if(j == 0 || j == icol-1){
-				mvprtch(i,j, 1, '#');
+void drawgraphic(const char *fname, int cordy, int cordx, int color){
+	FILE *f = fopen(fname, "r");
+	char c;
+	int x = cordx, y = cordy, toggle = 0;
+	int oob = 0;
+	
+	while((c = fgetc(f)) != EOF){
+		if (c == 'ë' && toggle == 0 && !oob) {
+            attroff(COLOR_PAIR(bkgcolor));
+            attron(COLOR_PAIR(color));
+            toggle = 1;
+        } else if (c == 'ë' && toggle == 1 && !oob) {
+            attroff(COLOR_PAIR(color));
+            attron(COLOR_PAIR(bkgcolor));
+            toggle = 0;
+        } else if (c == '\n') {
+            y++;
+            x = cordx;
+            oob = 0;
+        } else if (!oob){
+        	if(x > optcol-2 || x < 1 || y > optrow-2 || y < 1){
+        		if(toggle){
+	        		toggle = 0;
+				}
+				oob = 1;
+			} else if(c != ' '){
+        		mvaddch(y, x, c);
+        		x++;
 			} else {
-				mvprtch(i,j, 2, 'o');
+        		x++;
 			}
 		}
-	}
+		refresh();
+	} 
 	
+	attroff(COLOR_PAIR(color));
+	attron(COLOR_PAIR(bkgcolor));
+	
+	fclose(f);
 }
 
-void enclear(const int irow, const int icol){
+void upres(char *buf, int *maxr, int *maxc){
+	getmaxyx(stdscr, maxr, maxc);
+	sprintf(buf, "Row = %d, Col = %d", maxr, maxc);
+	mvprtstr(0, 0, 1, buf);
+}
+
+void enclear(){
 	erase();
 	refresh();
 }
+
+void strgame(int irow, int icol){
+//	refresh();
+	char buf[30];
+	int maxr, maxc;
+	char chr = '\0';
+	
+	int sim1 = 330, sim2 =330; 
+
+	do {
+		// drawing the map
+		for(int i =0; i < irow; i++){
+			for(int j = 0; j< icol; j++){
+				if(i == 0 || i == irow-1){
+					mvprtch(i,j, 1, '#');
+				} else if(j == 0 || j == icol-1){
+					mvprtch(i,j, 1, '#');
+				} else {
+					mvprtch(i,j, 2, ' ');
+				}
+			}
+		}
+		
+		upres(buf, &maxr, &maxc);
+		drawgraphic("Simulation.txt", 4, sim1, 2);
+		drawgraphic("Sim2.txt", 24, sim2, 1);
+		sim1+=1; sim2+=1;
+		if(sim1 > optcol-1){
+			sim1 = 330;
+		}
+		
+		if(sim2 > optcol-1){
+			sim2 = 330;
+		}
+		
+		refresh();
+		napms(50);
+		chr = wgetch(stdscr);
+		// clear entire screen (artifact left behind)
+		enclear();
+	} while(chr != 'q');
+
+	
+	
+}
+
 
 int main(int argc, char *argv[]){
 	
@@ -85,29 +163,14 @@ int main(int argc, char *argv[]){
 	curs_set(0); // set the cursor invisible
 	getmaxyx(stdscr, irow, icol); // get the screensize
 	
-	
 // setting the pair color
 	init_pair(1, COLOR_RED, COLOR_BLUE); // initialize the color pair (letter and background)
 	init_pair(2, 0, COLOR_WHITE);
 
 // force full screen
 	forcefullscreen(&irow, &icol);
-
-	char buf[30];
-	int maxr, maxc;
-	char chr = '\0';
-	do {
-			
-		strgame(irow, icol);
-		getmaxyx(stdscr, maxr, maxc);
-		sprintf(buf, "Row = %d, Col = %d", maxr, maxc);
-		mvprtstr(0, 0, 1, buf);
-		refresh();
-		napms(50);
-		// clear entire screen (artifact left behind)
-		enclear(irow, icol);
-//		chr = getch();
-	} while(chr != 'q');
+	
+	strgame(irow, icol);
 	
 	
 	endwin();
